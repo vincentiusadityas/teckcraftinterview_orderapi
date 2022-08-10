@@ -1,3 +1,9 @@
+/**
+ * Author: Vincentius Aditya Sundjaja
+ * Created at: Wed, 9 August 2022
+ */
+
+///////////////// Importing all the required dependencies /////////////////
 const express = require('express'),
     fs = require('fs'),
     url = require('url');
@@ -5,11 +11,13 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const moment = require('moment');
 const { body, validationResult } = require('express-validator');
-
 const app = express()
+
+///////////////// Static constants /////////////////
 const port = 3000
+const dataPath = __dirname + '/public/data.txt';
 
-
+///////////////// Configuring the express app /////////////////
 app.use('/public', express.static(__dirname + '/public'));
 app.use(express.static(__dirname + '/public'));
 
@@ -18,13 +26,15 @@ app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-app.get("/test", (req, res, next) => {
-    res.json(["Tony", "Lisa", "Michael", "Ginger", "Food"]);
+
+///////////////// DEFINING THE APIs /////////////////
+
+// This endpoint is to test if the server is working
+app.get("/ping", (req, res, next) => {
+    res.json("You've pinged the server!");
 });
 
-const filePath = __dirname + '/public/data.txt';
-console.log('filePath:', filePath)
-
+// This endpoint is to receive POST data and store it within the service
 app.post('/orders',
     body('id').exists(),
     body('title').exists(),
@@ -32,6 +42,8 @@ app.post('/orders',
     body('type').exists(),
     body('customer').exists(),
     function (req, res) {
+
+        // Checking if the required attributes exist
         const errors = validationResult(req);
         console.log(errors)
         if (!errors.isEmpty()) {
@@ -39,13 +51,15 @@ app.post('/orders',
             return;
         }
 
+        // checking if id is a number
         if (isNaN(req.body.id)) {
             res.status(422).json({ error: { message: "id must be a number" } });
             return;
         }
 
         try {
-            fs.readFile(filePath, 'utf8', function (err, data) {
+            // fetching current data
+            fs.readFile(dataPath, 'utf8', function (err, data) {
                 if (err) {
                     console.log("READ FILE ERROR:", err)
                     throw err;
@@ -56,6 +70,7 @@ app.post('/orders',
                     json = JSON.parse(data)
                 }
 
+                // getting all the current ids and checking if the new id already exists or not
                 const ids = json.map((item, idx) => parseInt(item.id))
                 console.log(ids)
                 if (ids.length && ids.includes(parseInt(req.body.id))) {
@@ -66,7 +81,8 @@ app.post('/orders',
 
                 json.push(req.body)
 
-                fs.writeFile(filePath, JSON.stringify(json), function (err) {
+                // if all validations are successful, then continue to write the data
+                fs.writeFile(dataPath, JSON.stringify(json), function (err) {
                     if (err) {
                         throw err;
                     }
@@ -82,11 +98,12 @@ app.post('/orders',
         }
     });
 
+// This endpoint is to fetch an order based on its id
+// Example: `/orders/1`
 app.get('/orders/:id', (req, res) => {
-    // Reading id from the URL
     const id = req.params.id;
 
-    fs.readFile(filePath, 'utf8', function (err, data) {
+    fs.readFile(dataPath, 'utf8', function (err, data) {
         if (err) {
             console.log("READ FILE ERROR:", err)
             throw err;
@@ -110,12 +127,15 @@ app.get('/orders/:id', (req, res) => {
     })
 });
 
+// This endpoint is to get a list of order ids, customers, and total orders that has a 
+// certain type on a certain date.
+// Example: `/orders/iPhone13/20160922`
 app.get('/orders/:type/:date', (req, res) => {
     // Reading id from the URL
     const type = req.params.type;
     const date = req.params.date;
 
-    fs.readFile(filePath, 'utf8', function (err, data) {
+    fs.readFile(dataPath, 'utf8', function (err, data) {
         if (err) {
             console.log("READ FILE ERROR:", err)
             throw err;
